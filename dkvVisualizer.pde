@@ -18,12 +18,15 @@ void setup() {
   oscP5 = new OscP5(this, 48068);
   vertScale = height/88.0;
   
+  //rectMode(CORNERS); //so that the coords of the rects we draw give the coords of the corners, rather than corner and width/height
+  //ellipseMode(CORNERS); //same for ellipse
+  
 }
 
 void draw() {
   background(0);
   
-  float currentTime = millis();
+  int currentTime = millis();
   
   if(notes.size() > maxNumNotes){
      notes.remove(0);
@@ -31,16 +34,7 @@ void draw() {
   
   for (int i = notes.size() - 1; i >= 0; i--) {
     Note note = notes.get(i);
-    if(note.type==0){
-      stroke(255,0,0);
-      fill(255,0,0,note.vel*255/128);
-    }else{
-      stroke(0,255,0);
-      fill(0,255,0, note.vel*255/128);
-    }
-    float noteSize = note.vel * note.vel * noteSizeScale;
-    float offTime = ((note.offTime < 0) ? currentTime : note.offTime);
-    rect((currentTime - note.onTime)*timeSpaceScale, height-(note.num-bottomNoteNum)*vertScale, (note.onTime - offTime)*timeSpaceScale, noteSize);
+    note.update();
   }
 }
 
@@ -93,13 +87,35 @@ class Note {
   int num, vel;
   int type; //0 is piano, 1 is algo
   float onTime, offTime, duration; //in seconds
-  int x, y;
+  float x, y, dx, dy; //location, then width / height
   
   Note(int theNum, int theVel, int theType) {
     num = theNum;
     vel = theVel;
     onTime = millis();
-    offTime = -1; //this indicates that we don't yet know the offTime
+    offTime = -1; //this indicates that we don't yet know the offTime yet — note hasn't finished
     type = theType;
+   
+    x = 0;
+    y = height-(num-bottomNoteNum)*vertScale;
+    dx = 0;
+    dy = pow(vel,2) * noteSizeScale;
+  }
+  
+  void update()
+  {
+    int currentTime = millis();
+    x = (currentTime - onTime)*timeSpaceScale;
+    if (offTime < 0){
+      dx = (onTime-currentTime)*timeSpaceScale;
+    }
+    if(type==0){
+      stroke(255,0,0);
+      fill(255,0,0,vel*255/128);
+    }else{
+      stroke(0,255,0);
+      fill(0,255,0,vel*255/128);
+    }
+    rect(x, y, dx, dy);
   }
 }
