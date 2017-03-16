@@ -7,7 +7,8 @@ ArrayList<Note> notes = new ArrayList<Note>();
 float vertScale;
 int bottomNoteNum = 21;
 float noteSizeScale = 0.02;
-float timeSpaceScale = 0.5;
+float speed = 3; //how fast notes move across screen
+float speedPerspective = 1; //how much faster louder notes move than slower ones
 int maxNumNotes = 40;
 
 void setup() {
@@ -39,44 +40,23 @@ void draw() {
 }
 
 void oscEvent(OscMessage theOscMessage) {
-  //pianoOn
-  if (theOscMessage.addrPattern().equals("/pianoOn")) {
+  //noteOn
+  if (theOscMessage.addrPattern().equals("/noteOn")) {
     int num = theOscMessage.get(0).intValue(); 
     int vel = theOscMessage.get(1).intValue();
-    int type = 0;
-    print("pianoOn: ");println(num, vel);
-    notes.add(new Note(num, vel, type));
-  }
-  //algoOn
-  if (theOscMessage.addrPattern().equals("/algoOn")) {
-    int num = theOscMessage.get(0).intValue(); 
-    int vel = theOscMessage.get(1).intValue();
-    int type = 1;
-    print("algoOn: ");println(num, vel);
-    notes.add(new Note(num, vel, type));
+    int depth = theOscMessage.get(2).intValue();
+    print("noteOn: ");println(num, vel, depth);
+    notes.add(new Note(num, vel, depth, speed, speedPerspective));
   }
   //pianoOff
-  if (theOscMessage.addrPattern().equals("/pianoOff")) {
+  if (theOscMessage.addrPattern().equals("/noteOff")) {
     int num = theOscMessage.get(0).intValue();
     int vel = theOscMessage.get(1).intValue();
-    int type = 0;
-    print("pianoOff: ");println(num, vel);
+    int depth = theOscMessage.get(2).intValue();
+    print("noteOff: ");println(num, vel, depth);
     for (int i = notes.size() - 1; i >= 0; i--) {
       Note note = notes.get(i);
-      if (note.num == num && note.type == type && note.offTime < 0){
-        note.offTime = millis();
-      }
-    }
-  }
-  //algoOff
-  if (theOscMessage.addrPattern().equals("/algoOff")) {
-    int num = theOscMessage.get(0).intValue();
-    int vel = theOscMessage.get(1).intValue();
-    int type = 1;
-    print("algoOff: ");println(num, vel);
-    for (int i = notes.size() - 1; i >= 0; i--) {
-      Note note = notes.get(i);
-      if (note.num == num && note.type == type && note.offTime < 0){
+      if (note.num == num && note.depth == depth && note.offTime < 0){
         note.offTime = millis();
       }
     }
@@ -85,37 +65,42 @@ void oscEvent(OscMessage theOscMessage) {
 
 class Note {
   int num, vel;
-  int type; //0 is piano, 1 is algo
+  int depth; //0 is piano, 1 and more is algo
   float onTime, offTime, duration; //in seconds
   float x, y, dx, dy; //location, then width / height
+  float speed; //how fast it should move across the screen
+  int r,g,b;
   
-  Note(int theNum, int theVel, int theType) {
+  Note(int theNum, int theVel, int theDepth, float theSpeed, float theSpeedPerspective) {
     num = theNum;
     vel = theVel;
     onTime = millis();
     offTime = -1; //this indicates that we don't yet know the offTime yet — note hasn't finished
-    type = theType;
+    depth = theDepth;
+    speed = theSpeed + theSpeedPerspective * theSpeed * (vel/128.0-0.5);
    
     x = 0;
-    y = height-(num-bottomNoteNum)*vertScale;
+    y = height-(num-bottomNoteNum+1)*vertScale;
     dx = 0;
     dy = pow(vel,2) * noteSizeScale;
+    
+    if(depth==0){
+      r=255;g=0;b=0;
+    }else{
+      r=0;g=255;b=0;
+    }
   }
   
   void update()
   {
     int currentTime = millis();
-    x = (currentTime - onTime)*timeSpaceScale;
+    x += speed;
     if (offTime < 0){
-      dx = (onTime-currentTime)*timeSpaceScale;
+      dx = -x;
     }
-    if(type==0){
-      stroke(255,0,0);
-      fill(255,0,0,vel*255/128);
-    }else{
-      stroke(0,255,0);
-      fill(0,255,0,vel*255/128);
-    }
+    //stroke(0,255,0);
+    noStroke();
+    fill(r,g,b,vel*255/128);
     rect(x, y, dx, dy);
   }
 }
