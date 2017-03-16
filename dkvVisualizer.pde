@@ -2,27 +2,23 @@ import oscP5.*;
 import netP5.*;
 
 OscP5 oscP5;
-NoteInProgress[] pianoNoteInProg = new NoteInProgress[140];
-NoteInProgress[] algoNoteInProg = new NoteInProgress[140];
 ArrayList<Note> notes = new ArrayList<Note>();
 ArrayList<ScreenNote> screenNotes = new ArrayList<ScreenNote>();
 
 float vertScale;
 int bottomNoteNum = 21;
-float noteSizeScale = 2;
+float noteSizeScale = 0.02;
 float timeSpaceScale = 0.3;
-int maxNumNotes = 1000;
+int maxNumNotes = 20;
 
 void setup() {
-  size(800, 800);
+  //size(800, 800);
+  fullScreen();
+  background(0);
   
   oscP5 = new OscP5(this, 48068);
   vertScale = height/88.0;
   
-  for (int i = 0; i < pianoNoteInProg.length; i++) {
-    pianoNoteInProg[i] = new NoteInProgress(0, 0.0);
-    algoNoteInProg[i] = new NoteInProgress(0, 0.0);
-  }
 }
 
 void draw() {
@@ -35,15 +31,15 @@ void draw() {
      notes.remove(0);
   }
   
-  stroke(255,0,0);
-  for (int i = 0; i < pianoNoteInProg.length; i++) {
-    float noteSize = pianoNoteInProg[i].vel * noteSizeScale;
-    rect((currentTime - pianoNoteInProg[i].onTime)*timeSpaceScale, (i-bottomNoteNum)*vertScale, noteSize, noteSize);
-  }
-  stroke(0,255,0);
-  for (int i = 0; i < algoNoteInProg.length; i++) {
-    float noteSize = algoNoteInProg[i].vel * noteSizeScale;
-    rect((currentTime - algoNoteInProg[i].onTime)*timeSpaceScale, i*vertScale, noteSize, noteSize);
+  for (int i = notes.size() - 1; i >= 0; i--) {
+    Note note = notes.get(i);
+    if(note.type==0){
+      stroke(255,0,0);
+    }else{
+      stroke(0,255,0);
+    }
+    float noteSize = note.vel*note.vel * noteSizeScale;
+    rect((currentTime - note.onTime)*timeSpaceScale, height-(note.num-bottomNoteNum)*vertScale, -(currentTime - note.offTime)*timeSpaceScale, noteSize);
   }
 }
 
@@ -52,28 +48,43 @@ void oscEvent(OscMessage theOscMessage) {
   if (theOscMessage.addrPattern().equals("/pianoOn")) {
     int num = theOscMessage.get(0).intValue(); 
     int vel = theOscMessage.get(1).intValue();
-    println(num, vel);
-    pianoNoteInProg[num].vel=vel;
-    pianoNoteInProg[num].onTime=millis();
+    int type = 0;
+    print("pianoOn: ");println(num, vel);
+    notes.add(new Note(num, vel, type));
   }
   //algoOn
   if (theOscMessage.addrPattern().equals("/algoOn")) {
     int num = theOscMessage.get(0).intValue(); 
     int vel = theOscMessage.get(1).intValue();
-    println(num, vel);
-    algoNoteInProg[num].vel=vel;
-    algoNoteInProg[num].onTime=millis();
+    int type = 1;
+    print("algoOn: ");println(num, vel);
+    notes.add(new Note(num, vel, type));
   }
-}
-
-
-class NoteInProgress {
-  int vel;
-  float onTime; //in seconds
-  
-  NoteInProgress(int theVel, float theOnTime) {
-    vel = theVel;
-    onTime = theOnTime;
+  //pianoOff
+  if (theOscMessage.addrPattern().equals("/pianoOff")) {
+    int num = theOscMessage.get(0).intValue();
+    int vel = theOscMessage.get(1).intValue();
+    int type = 0;
+    print("pianoOff: ");println(num, vel);
+    for (int i = notes.size() - 1; i >= 0; i--) {
+      Note note = notes.get(i);
+      if (note.num == num && note.type == type && note.offTime < 0){
+        note.offTime = millis();
+      }
+    }
+  }
+  //algoOff
+  if (theOscMessage.addrPattern().equals("/algoOff")) {
+    int num = theOscMessage.get(0).intValue();
+    int vel = theOscMessage.get(1).intValue();
+    int type = 1;
+    print("algoOff: ");println(num, vel);
+    for (int i = notes.size() - 1; i >= 0; i--) {
+      Note note = notes.get(i);
+      if (note.num == num && note.type == type && note.offTime < 0){
+        note.offTime = millis();
+      }
+    }
   }
 }
 
@@ -83,7 +94,7 @@ class Note {
   float onTime, offTime, duration; //in seconds
   int x, y;
   
-  Note(int theNum, int theVel, float theOnTime, float theOffTime, int theType) {
+  Note(int theNum, int theVel, int theType) {
     num = theNum;
     vel = theVel;
     onTime = millis();
