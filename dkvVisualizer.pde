@@ -3,13 +3,12 @@ import netP5.*;
 
 OscP5 oscP5;
 ArrayList<Note> notes = new ArrayList<Note>();
-ArrayList<ScreenNote> screenNotes = new ArrayList<ScreenNote>();
 
 float vertScale;
 int bottomNoteNum = 21;
 float noteSizeScale = 0.02;
-float timeSpaceScale = 0.3;
-int maxNumNotes = 20;
+float timeSpaceScale = 0.5;
+int maxNumNotes = 40;
 
 void setup() {
   //size(800, 800);
@@ -23,7 +22,6 @@ void setup() {
 
 void draw() {
   background(0);
-  noFill();
   
   float currentTime = millis();
   
@@ -35,11 +33,14 @@ void draw() {
     Note note = notes.get(i);
     if(note.type==0){
       stroke(255,0,0);
+      fill(255,0,0,note.vel*255/128);
     }else{
       stroke(0,255,0);
+      fill(0,255,0, note.vel*255/128);
     }
-    float noteSize = note.vel*note.vel * noteSizeScale;
-    rect((currentTime - note.onTime)*timeSpaceScale, height-(note.num-bottomNoteNum)*vertScale, -(currentTime - note.offTime)*timeSpaceScale, noteSize);
+    float noteSize = note.vel * note.vel * noteSizeScale;
+    float offTime = ((note.offTime < 0) ? currentTime : note.offTime);
+    rect((currentTime - note.onTime)*timeSpaceScale, height-(note.num-bottomNoteNum)*vertScale, (note.onTime - offTime)*timeSpaceScale, noteSize);
   }
 }
 
@@ -100,28 +101,5 @@ class Note {
     onTime = millis();
     offTime = -1; //this indicates that we don't yet know the offTime
     type = theType;
-  }
-}
-
-class ScreenNote implements Comparable {
-  int num, veloc, x, y, type;
-  float onTime, offTime; //in seconds
-  
-  ScreenNote(int theNum, int theVeloc) {
-    num = theNum;
-    veloc = theVeloc;
-    onTime = millis();
-  }
-  
-  //if we want to sort based on the X value of MyObj-es:
-  int compareTo(Object o)
-  {
-    Note other=(Note)o;
-    if(other.num<num)  
-      return -1;
-    if(other.num==num)
-      return 0;
-    else
-      return 1;
   }
 }
